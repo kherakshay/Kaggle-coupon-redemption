@@ -1,17 +1,17 @@
 PROC IMPORT 
-DATAFILE="C:\Akshay\Genpact\Kaggle data\offers.csv" 
+DATAFILE="********\offers.csv" 
 OUT= in.offers 
 DBMS=csv replace;
 run;
 
 PROC IMPORT 
-DATAFILE="C:\Akshay\Genpact\Kaggle data\transactions.csv" 
+DATAFILE="*********\transactions.csv" 
 OUT= in.transactions 
 DBMS=csv replace;
 run;
 
 PROC IMPORT 
-DATAFILE="C:\Akshay\Genpact\Kaggle data\trainHistory.csv" 
+DATAFILE="*********\trainHistory.csv" 
 OUT= in.trainHistory 
 DBMS=csv replace;
 run;

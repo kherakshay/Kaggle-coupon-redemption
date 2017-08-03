@@ -1,0 +1,802 @@
+PROC IMPORT 
+DATAFILE="C:\Akshay\Genpact\Kaggle data\offers.csv" 
+OUT= in.offers 
+DBMS=csv replace;
+run;
+
+PROC IMPORT 
+DATAFILE="C:\Akshay\Genpact\Kaggle data\transactions.csv" 
+OUT= in.transactions 
+DBMS=csv replace;
+run;
+
+PROC IMPORT 
+DATAFILE="C:\Akshay\Genpact\Kaggle data\trainHistory.csv" 
+OUT= in.trainHistory 
+DBMS=csv replace;
+run;
+
+data tran_temp;
+ set in.transactions (obs = 50000);
+run;
+
+/ **** category-brand-company***/
+
+proc sort data = in.tran_subset;
+by id category brand company;
+run;
+
+proc means data = in.tran_subset noprint;
+ by id category brand company;
+ var purchaseamount purchasequantity;
+output out = in.ak (drop = _type_ _freq_) n(purchaseamount) = pq_c_b_c_n sum(purchaseamount) = pa_c_b_c_sum sum(purchasequantity) = pq_c_b_c_sum;
+run;
+
+/*** company ***/ 
+
+proc means data = in.tran_subset noprint;
+ by id category;
+ var purchaseamount purchasequantity;
+output out = in.ak1 (drop = _type_ _freq_) n(purchaseamount) = pq_c_n sum(purchaseamount) = pa_c_sum sum(purchasequantity) = pq_c_sum;
+run;
+
+/*** brand ***/
+
+proc sort data = in.tran_subset;
+by id brand;
+run;
+
+proc means data = in.tran_subset noprint;
+ by id brand;
+ var purchaseamount purchasequantity;
+output out = in.ak2 (drop = _type_ _freq_) n(purchaseamount) = pq_b_n sum(purchaseamount) = pa_b_sum sum(purchasequantity) = pq_b_sum;
+run;
+
+/*** company ***/
+
+proc sort data = in.tran_subset;
+by id company;
+run;
+
+proc means data = in.tran_subset noprint;
+ by id company;
+ var purchaseamount purchasequantity;
+output out = in.ak3 (drop = _type_ _freq_) n(purchaseamount) = pq_co_n sum(purchaseamount) = pa_co_sum sum(purchasequantity) = pq_co_sum;
+run;
+
+/*** category-brand ***/
+
+proc sort data = in.tran_subset;
+by id category brand;
+run;
+
+proc means data = in.tran_subset noprint;
+ by id category brand;
+ var purchaseamount purchasequantity;
+output out = in.ak4 (drop = _type_ _freq_) n(purchaseamount) = pq_c_b_n sum(purchaseamount) = pa_c_b_sum sum(purchasequantity) = pq_c_b_sum;
+run;
+
+/*** brand-company ***/
+
+proc sort data = in.tran_subset;
+by id brand company;
+run;
+
+proc means data = in.tran_subset noprint;
+ by id brand company;
+ var purchaseamount purchasequantity;
+output out = in.ak5 (drop = _type_ _freq_) n(purchaseamount) = pq_b_c_n sum(purchaseamount) = pa_b_c_sum sum(purchasequantity) = pq_b_c_sum;
+run;
+
+/*** category-company ***/
+
+proc sort data = in.tran_subset;
+by id category company;
+run;
+
+proc means data = in.tran_subset noprint;
+ by id category company;
+ var purchaseamount purchasequantity;
+output out = in.ak6 (drop = _type_ _freq_) n(purchaseamount) = pq_c_c_n sum(purchaseamount) = pa_c_c_sum sum(purchasequantity) = pq_c_c_sum;
+run;
+
+/*** merging offers to trainHistory ***/
+
+proc sort data = in.trainHistory out = trainHistory;
+by offer;
+run;
+
+proc sort data = in.offers out = offers nodupkey;
+by offer;
+run;
+
+data modeldata;
+merge trainHistory (in=a) offers (in=b);
+by offer;
+if a;
+run;
+
+/*** assortment ***/
+
+proc sql;
+ create table in.ak7 as
+ select category, brand, company, count (distinct productsize) AS ps_c_b_c_n from in.transactions
+ group by category, brand, company;
+quit; 
+
+/*** competitors ***/
+
+proc sql;
+ create table in.ak8 as
+ select category, count (distinct brand) AS num_comp_c from in.transactions
+ group by category;
+quit; 
+
+/*** merging ak datasets to modeldata ***/
+/* ak */
+proc sort data = modeldata nodupkey;
+by id category brand company;
+run;
+
+proc sort data = in.ak nodupkey;
+by id category brand company;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak (in=b);
+by id category brand company;
+if a;
+run;
+
+/* ak1 */
+proc sort data = modeldata nodupkey;
+by id category;
+run;
+
+proc sort data = in.ak1 nodupkey;
+by id category;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak1 (in=b);
+by id category;
+if a;
+run;
+
+/* ak2 */
+proc sort data = modeldata nodupkey;
+by id brand;
+run;
+
+proc sort data = in.ak2 nodupkey;
+by id brand;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak2 (in=b);
+by id brand;
+if a;
+run;
+
+/* ak3 */
+proc sort data = modeldata nodupkey;
+by id company;
+run;
+
+proc sort data = in.ak3 nodupkey;
+by id company;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak3 (in=b);
+by id company;
+if a;
+run;
+
+/* ak4 */
+proc sort data = modeldata nodupkey;
+by id category brand;
+run;
+
+proc sort data = in.ak4 nodupkey;
+by id category brand;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak4 (in=b);
+by id category brand;
+if a;
+run;
+
+/* ak5 */
+proc sort data = modeldata nodupkey;
+by id brand company;
+run;
+
+proc sort data = in.ak5 nodupkey;
+by id brand company;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak5 (in=b);
+by id brand company;
+if a;
+run;
+
+/* ak6 */
+proc sort data = modeldata nodupkey;
+by id category company;
+run;
+
+proc sort data = in.ak6 nodupkey;
+by id category company;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak6 (in=b);
+by id category company;
+if a;
+run;
+
+/* ak7 */
+proc sort data = modeldata;
+by category brand company;
+run;
+
+proc sort data = in.ak7 nodupkey;
+by category brand company;
+run;
+
+data modeldata;
+merge modeldata (in=a) in.ak7 (in=b);
+by category brand company;
+if a;
+run;
+
+/* ak8 */
+proc sort data = modeldata;
+by category;
+run;
+
+proc sort data = in.ak8 nodupkey;
+by category;
+run;
+
+data in.modeldata;
+merge modeldata (in=a) in.ak8 (in=b);
+by category;
+if a;
+run;
+
+/*** Logistic Regression Model ***/
+
+title "Logistic Regression Model";
+proc logistic data = in.modeldata_updated descending;
+model repeater = 
+pq_c_b_c_n
+pq_c_n
+pq_co_n
+ps_c_b_c_n
+num_comp_c
+offervalue
+/*returns*/
+avg_price
+pq_ch_n
+
+/details CLPARM = WALD lackfit;
+output out = predicted predicted = p;
+run;
+quit;
+
+/*** subsetting modeldata to get dataset for submission ***/
+data in.modeldata1;
+ set in.modeldata;
+ if 
+pq_c_b_c_n = . or
+pq_c_n = . or
+pq_co_n = . or
+ps_c_b_c_n = . or
+num_comp_c = . or
+offervalue = . then delete;
+run;
+
+
+/*** subsetting tran ***/
+data tran_temp;
+ set in.transactions (obs = 200000);
+run;
+
+data tran_subset_temp;
+ set in.tran_subset (obs = 200000);
+run;
+
+
+/*** merging trainHistory and offers ***/
+proc sort data = in.trainHistory out = trainHistory;
+by offer;
+run;
+
+proc sort data = in.offers out = offers;
+by offer;
+run;
+
+data train_offers;
+merge trainHistory (in=a) offers (in=b);
+by offer;
+if a;
+run;
+
+/*** creating no of days since c_b_c ***/
+proc sort data = in.Tran_subset out = temp;
+by id category brand company date;
+run;
+
+data ak_numdays1;
+ set temp;
+ by id category brand company date;
+ if last.company;
+ drop chain dept productsize productmeasure purchasequantity purchaseamount;
+ rename date = lastdate_c_b_c;
+run;
+
+proc sort data = ak_numdays1 nodupkey;
+by id category brand company;
+run;
+
+proc sort data = train_offers nodupkey;
+by id category brand company;
+run;
+
+data train_offers;
+merge train_offers (in=a) ak_numdays1 (in=b);
+by id category brand company;
+if a;
+run;
+
+data train_offers;
+ set train_offers;
+ num_days_c_b_c = datdif (lastdate_c_b_c, offerdate, 'act/act');
+run;
+
+/* merging :- */
+
+proc sort data = train_offers (keep = id category brand company num_days_c_b_c) out = to1 nodupkey;
+by id category brand company;
+run; 
+
+proc sort data = in.modeldata nodupkey;
+by id category brand company;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) to1 (in=b);
+by id category brand company;
+if a;
+run; 
+ 
+
+/*** creating no of days since c_ ***/
+proc sort data = in.Tran_subset out = temp;
+by id category date;
+run;
+
+data ak_numdays2;
+ set temp;
+ by id category date;
+ if last.category;
+ drop chain dept company brand productsize productmeasure purchasequantity purchaseamount;
+ rename date = lastdate_c;
+run;
+
+proc sort data = ak_numdays2 nodupkey;
+by id category;
+run;
+
+proc sort data = train_offers nodupkey;
+by id category;
+run;
+
+data train_offers;
+merge train_offers (in=a) ak_numdays2 (in=b);
+by id category;
+if a;
+run;
+
+data train_offers;
+ set train_offers;
+ num_days_c = datdif (lastdate_c, offerdate, 'act/act');
+run;
+
+/* merging :- */
+
+proc sort data = train_offers (keep = id category num_days_c) out = to1 nodupkey;
+by id category;
+run; 
+
+proc sort data = in.modeldata nodupkey;
+by id category;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) to1 (in=b);
+by id category;
+if a;
+run; 
+
+
+/*** creating no of days since b ***/
+proc sort data = in.Tran_subset out = temp;
+by id brand date;
+run;
+
+data ak_numdays3;
+ set temp;
+ by id brand date;
+ if last.brand;
+ drop chain dept category company productsize productmeasure purchasequantity purchaseamount;
+ rename date = lastdate_b;
+run;
+
+proc sort data = ak_numdays3 nodupkey;
+by id brand;
+run;
+
+proc sort data = train_offers nodupkey;
+by id brand;
+run;
+
+data train_offers;
+merge train_offers (in=a) ak_numdays3 (in=b);
+by id brand;
+if a;
+run;
+
+data train_offers;
+ set train_offers;
+ num_days_b = datdif (lastdate_b, offerdate, 'act/act');
+run;
+
+/* merging :- */
+
+proc sort data = train_offers (keep = id brand num_days_b) out = to1 nodupkey;
+by id brand;
+run; 
+
+proc sort data = in.modeldata nodupkey;
+by id brand;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) to1 (in=b);
+by id brand;
+if a;
+run; 
+
+
+/*** creating no of days since co ***/
+proc sort data = in.Tran_subset out = temp;
+by id company date;
+run;
+
+data ak_numdays4;
+ set temp;
+ by id company date;
+ if last.company;
+ drop chain dept category brand productsize productmeasure purchasequantity purchaseamount;
+ rename date = lastdate_co;
+run;
+
+proc sort data = ak_numdays4 nodupkey;
+by id company;
+run;
+
+proc sort data = train_offers nodupkey;
+by id company;
+run;
+
+data train_offers;
+merge train_offers (in=a) ak_numdays4 (in=b);
+by id company;
+if a;
+run;
+
+data train_offers;
+ set train_offers;
+ num_days_co = datdif (lastdate_co, offerdate, 'act/act');
+run;
+
+/* merging :- */
+
+proc sort data = train_offers (keep = id company num_days_co) out = to1 nodupkey;
+by id company;
+run; 
+
+proc sort data = in.modeldata nodupkey;
+by id company;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) to1 (in=b);
+by id company;
+if a;
+run; 
+
+
+/*** chain ***/
+proc sort data = in.Tran_subset;
+by id chain;
+run;
+
+proc means data = in.Tran_subset noprint;
+ by id chain;
+ var purchaseamount purchasequantity;
+output out = ak9 (drop = _type_ _freq_) n(purchaseamount) = pq_ch_n sum(purchaseamount) = pa_ch_sum sum(purchasequantity) = pq_ch_sum;
+run;
+
+proc sort data = ak9 nodupkey;
+by id chain;
+run; 
+
+proc sort data = in.modeldata nodupkey;
+by id chain;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) ak9 (in=b);
+by id chain;
+if a;
+run; 
+
+/*** brand success ***/
+proc sort data = in.transactions;
+by category brand company;
+run;
+
+proc means data = in.transactions noprint;
+ by category brand company;
+ var purchaseamount purchasequantity;
+output out = ak10 (drop = _type_ _freq_) n(purchaseamount) = bs_pq_c_b_c_n sum(purchaseamount) = bs_pa_c_b_c_sum sum(purchasequantity) = bs_pq_c_b_c_sum;
+run;
+
+proc sort data = ak10 nodupkey;
+by category brand company;
+run; 
+
+proc sort data = in.modeldata;
+by category brand company;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) ak10 (in=b);
+by category brand company;
+if a;
+run; 
+
+/*** Average price of the c_b_c ***/
+
+data temp;
+ set in.tran_subset;
+ purchaseprice = purchaseamount/purchasequantity;
+ if purchaseprice le 0 then delete;
+run;
+
+proc sort data = temp;
+by category brand company;
+run;
+
+proc means data = temp noprint;
+ by category brand company;
+ var purchaseprice;
+output out = ak11 (drop = _type_ _freq_) mean(purchaseprice) = avg_price;
+run;
+
+proc sort data = ak11 nodupkey;
+by category brand company;
+run; 
+
+proc sort data = in.modeldata;
+by category brand company;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) ak11 (in=b);
+by category brand company;
+if a;
+run; 
+
+
+/*** Returns ***/
+
+data temp;
+ set in.transactions;
+ where purchaseamount lt 0;
+run;
+
+proc sort data = temp;
+by id category brand company;
+run;
+
+proc means data = temp noprint;
+ by id category brand company;
+ var purchaseamount;
+output out = ak12 (drop = _type_ _freq_) n(purchaseamount) = returns;
+run;
+
+proc sort data = ak12 nodupkey;
+by id category brand company;
+run; 
+
+proc sort data = in.modeldata;
+by id category brand company;
+run; 
+
+data in.modeldata;
+merge in.modeldata (in=a) ak12 (in=b);
+by id category brand company;
+if a;
+run; 
+
+/*** ran till here ***/
+/**** no. of times product was bought in the last 30 days ***/
+
+proc sort data = in.transactions;
+by id date;
+run;
+
+data temp (keep = id last_date);
+ set in.transactions;
+ by id date;
+ if last.id then last_date = date;
+ if last.id;
+run;
+
+data temp_a;
+merge tran_temp (in=a) temp (in=b);
+by id;
+if a;
+run;
+
+data temp_a;
+ set temp_a;
+ cutoff = last_date - date;
+ if cutoff gt 30 then delete;
+run;
+
+proc sort data = temp_a;
+by category brand company;
+run;
+
+proc means data = temp_a noprint;
+ by category brand company;
+ var cutoff;
+output out = ak13 (drop = _type_ _freq_) n(cutoff) = num_tran_30;
+run;
+
+/**** no. of visits to the store in the last 30 days ***/
+
+proc sort data = tran_temp;
+by chain;
+run;
+
+data temp (keep = chain last_date);
+ set tran_temp;
+ by chain;
+ if last.chain then last_date = date;
+ if last.chain;
+run;
+
+data temp_a;
+merge tran_temp (in=a) temp (in=b);
+by chain;
+if a;
+run;
+
+data temp_a;
+ set temp_a;
+ cutoff = last_date - date;
+ if cutoff gt 30 then delete;
+run;
+
+proc sort data = temp_a;
+by chain;
+run;
+
+proc means data = temp_a noprint;
+ by chain;
+ var cutoff;
+output out = ak14 (drop = _type_ _freq_) n(cutoff) = num_chain_30;
+run;
+
+proc means data = in.modeldata_updated n nmiss;
+run;
+
+data in.modeldata_updated2;
+ set in.modeldata_updated;
+ if pq_c_b_c_n = . then delete;
+run;
+ 
+data in.modeldata_updated2;
+ set in.modeldata_updated2;
+ if returns = . then returns = 0;
+run;
+
+proc corr data = in.modeldata_updated2;
+run;
+
+proc reg data = in.modeldata_updated2;
+model repeattrips = 
+pq_c_n
+pa_c_sum
+
+pq_b_n
+pa_b_sum
+pq_co_sum
+
+pa_b_c_sum
+pq_c_c_n
+
+pq_c_c_sum
+num_days_c_b_c
+num_days_c
+num_days_b
+num_days_co
+ps_c_b_c_n
+num_comp_c
+pq_ch_n
+pq_ch_sum
+offervalue
+
+bs_pq_c_b_c_sum
+avg_price
+returns
+
+ /vif collin;
+run;
+quit;
+
+/*** Logistic Regression Model ***/
+
+title "Logistic Regression Model";
+proc logistic data = in.modeldata_updated2 descending;
+model repeater = 
+/*pq_c_b_c_n*/
+/*pa_c_b_c_sum*/
+/*pq_c_b_c_sum*/
+/*pq_c_n*/
+pa_c_sum
+/*pq_c_sum*/
+pq_b_n
+pa_b_sum
+/*pq_b_sum*/
+/*pq_co_n*/
+/*pa_co_sum*/
+pq_co_sum
+/*pq_c_b_n*/
+/*pa_c_b_sum*/
+/*pq_c_b_sum*/
+/*pq_b_c_n*/
+pa_b_c_sum
+/*pq_b_c_sum*/
+/*pq_c_c_n*/
+/*pa_c_c_sum*/
+pq_c_c_sum
+num_days_c_b_c
+num_days_c
+num_days_b
+num_days_co
+ps_c_b_c_n
+num_comp_c
+pq_ch_n
+/*pa_ch_sum*/
+/*pq_ch_sum*/
+offervalue
+/*bs_pq_c_b_c_n*/
+/*bs_pa_c_b_c_sum*/
+bs_pq_c_b_c_sum
+avg_price
+returns
+
+/details CLPARM = WALD lackfit;
+output out = predicted predicted = p;
+run;
+quit;
